@@ -50,6 +50,7 @@ Thumbs.db
 *.avi
 *.mov
 *.zip
+data/
 
 # Logs
 *.log
