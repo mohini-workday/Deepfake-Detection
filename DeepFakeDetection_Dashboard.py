@@ -27,6 +27,32 @@ warnings.filterwarnings('ignore')
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# ============================================================================
+# DATA LOADING FUNCTIONS
+# ============================================================================
+
+@st.cache_data
+def load_dataset_stats():
+    """Load dataset statistics from saved files"""
+    stats_path = PROJECT_ROOT / "dashboard_data" / "dataset_stats.json"
+    label_path = PROJECT_ROOT / "dashboard_data" / "label_distribution.csv"
+    
+    if stats_path.exists():
+        import json
+        with open(stats_path, 'r') as f:
+            stats = json.load(f)
+        return stats, None
+    elif label_path.exists():
+        label_df = pd.read_csv(label_path)
+        return None, label_df
+    else:
+        # Fallback to hardcoded data
+        return None, pd.DataFrame({
+            'Label': ['Fake', 'Celeb-Real'],
+            'Count': [5582, 493],
+            'Percentage': [91.9, 8.1]
+        })
+
 # Page configuration
 st.set_page_config(
     page_title="DeepFake Detection Dashboard",
@@ -394,10 +420,54 @@ if page == "🏠 Home":
     """)
 
 # ============================================================================
+# DATA LOADING FUNCTIONS
+# ============================================================================
+
+@st.cache_data
+def load_dataset_stats():
+    """Load dataset statistics from saved files"""
+    stats_path = PROJECT_ROOT / "dashboard_data" / "dataset_stats.json"
+    label_path = PROJECT_ROOT / "dashboard_data" / "label_distribution.csv"
+    
+    if stats_path.exists():
+        import json
+        with open(stats_path, 'r') as f:
+            stats = json.load(f)
+        return stats, None
+    elif label_path.exists():
+        label_df = pd.read_csv(label_path)
+        return None, label_df
+    else:
+        # Fallback to hardcoded data
+        return None, pd.DataFrame({
+            'Label': ['Fake', 'Celeb-Real'],
+            'Count': [5582, 493],
+            'Percentage': [91.9, 8.1]
+        })
+
+# ============================================================================
 # PAGE 2: DATASET OVERVIEW
 # ============================================================================
 elif page == "📊 Dataset Overview":
-    st.header("📊 Dataset Overview & EDA")
+    st.header("📊 Dataset Overview & Exploratory Data Analysis")
+    
+    # Load data
+    stats, label_data = load_dataset_stats()
+    
+    if stats is None and label_data is None:
+        st.warning("⚠️ Dataset statistics not found. Please run Cell 10 in the notebook to generate statistics.")
+        label_data = pd.DataFrame({
+            'Label': ['Fake', 'Celeb-Real'],
+            'Count': [5582, 493],
+            'Percentage': [91.9, 8.1]
+        })
+    elif label_data is None:
+        # Create label_data from stats
+        label_data = pd.DataFrame({
+            'Label': list(stats['label_distribution'].keys()),
+            'Count': list(stats['label_distribution'].values())
+        })
+        label_data['Percentage'] = (label_data['Count'] / label_data['Count'].sum() * 100).round(2)
     
     st.subheader("Dataset Information")
     st.markdown("""
@@ -406,22 +476,26 @@ elif page == "📊 Dataset Overview":
     - **Celeb-Real**: Real/Original videos (Label: 0, "Celeb-Real")
     - **Celeb-Fake**: Fake/Manipulated videos (Label: 1, "Fake") 
     - **Testing**: Test videos for evaluation
-    
-    - **Total Training Samples**: 6,075 videos
-    - **Format**: MP4 video files
-    - **Classes**: 
-      - 0: Real/Original (Celeb-Real)
-      - 1: Fake/Manipulated (Celeb-Fake)
     """)
     
-    st.subheader("📈 Label Distribution")
+    # Display statistics
+    if stats:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Videos", stats.get('total_videos', 'N/A'))
+        with col2:
+            st.metric("Real Videos", stats.get('real_videos', 'N/A'))
+        with col3:
+            st.metric("Fake Videos", stats.get('fake_videos', 'N/A'))
+        with col4:
+            if stats.get('total_videos'):
+                imbalance_ratio = stats.get('fake_videos', 0) / stats.get('real_videos', 1)
+                st.metric("Imbalance Ratio", f"{imbalance_ratio:.1f}:1")
     
-    # Actual data from your dataset
-    label_data = pd.DataFrame({
-        'Label': ['Fake', 'Celeb-Real'],
-        'Count': [5582, 493],
-        'Percentage': [91.9, 8.1]
-    })
+    st.markdown("---")
+    
+    # CHART 1: Label Distribution
+    st.subheader("📈 Chart 1: Label Distribution")
     
     col1, col2 = st.columns(2)
     
@@ -432,9 +506,11 @@ elif page == "📊 Dataset Overview":
             y='Count',
             title='Label Distribution (Count)',
             color='Label',
-            color_discrete_map={'Celeb-Real': '#2ecc71', 'Fake': '#e74c3c'}
+            color_discrete_map={'Celeb-Real': '#2ecc71', 'Fake': '#e74c3c'},
+            text='Count'
         )
-        fig.update_layout(height=400)
+        fig.update_traces(textposition='outside')
+        fig.update_layout(height=400, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -444,19 +520,127 @@ elif page == "📊 Dataset Overview":
             names='Label',
             title='Label Distribution (Percentage)',
             color='Label',
-            color_discrete_map={'Celeb-Real': '#2ecc71', 'Fake': '#e74c3c'}
+            color_discrete_map={'Celeb-Real': '#2ecc71', 'Fake': '#e74c3c'},
+            hole=0.4
         )
-        fig.update_layout(height=400)
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        fig.update_layout(height=400, showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
     
+    # CHART 2: Folder Distribution
+    if stats and 'folders' in stats:
+        st.subheader("📁 Chart 2: Distribution by Source Folder")
+        
+        folder_data = pd.DataFrame({
+            'Folder': list(stats['folders'].keys()),
+            'Count': list(stats['folders'].values())
+        })
+        
+        fig = px.bar(
+            folder_data,
+            x='Folder',
+            y='Count',
+            title='Videos by Source Folder',
+            color='Folder',
+            text='Count'
+        )
+        fig.update_traces(textposition='outside')
+        fig.update_layout(height=400, xaxis_title='Folder', yaxis_title='Number of Videos')
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # CHART 3: Video Format Distribution
+    if stats and 'video_formats' in stats:
+        st.subheader("🎬 Chart 3: Video Format Distribution")
+        
+        format_data = pd.DataFrame({
+            'Format': list(stats['video_formats'].keys()),
+            'Count': list(stats['video_formats'].values())
+        })
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig = px.bar(
+                format_data,
+                x='Format',
+                y='Count',
+                title='Videos by File Format',
+                color='Format',
+                text='Count'
+            )
+            fig.update_traces(textposition='outside')
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            fig = px.pie(
+                format_data,
+                values='Count',
+                names='Format',
+                title='Format Distribution',
+                hole=0.3
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # CHART 4: Class Imbalance Visualization
+    st.subheader("⚖️ Chart 4: Class Imbalance Analysis")
+    
+    if len(label_data) == 2:
+        imbalance_data = pd.DataFrame({
+            'Metric': ['Real Videos', 'Fake Videos'],
+            'Count': [label_data[label_data['Label'] == 'Celeb-Real']['Count'].iloc[0] if len(label_data[label_data['Label'] == 'Celeb-Real']) > 0 else 0,
+                      label_data[label_data['Label'] == 'Fake']['Count'].iloc[0] if len(label_data[label_data['Label'] == 'Fake']) > 0 else 0]
+        })
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=imbalance_data['Metric'],
+            y=imbalance_data['Count'],
+            marker_color=['#2ecc71', '#e74c3c'],
+            text=imbalance_data['Count'],
+            textposition='outside'
+        ))
+        fig.update_layout(
+            title='Class Imbalance Visualization',
+            xaxis_title='Class',
+            yaxis_title='Number of Videos',
+            height=400
+        )
+    st.plotly_chart(fig, use_container_width=True)
+    
+        # Imbalance ratio
+        if len(imbalance_data) == 2:
+            ratio = imbalance_data.iloc[1]['Count'] / imbalance_data.iloc[0]['Count'] if imbalance_data.iloc[0]['Count'] > 0 else 0
+            st.info(f"⚠️ **Class Imbalance**: Fake videos are {ratio:.1f}x more than Real videos. Consider using class weights or data augmentation.")
+    
+    # CHART 5: Summary Statistics Table
+    st.subheader("📊 Chart 5: Dataset Summary Statistics")
+    
+    summary_stats = []
+    if stats:
+        summary_stats.append({'Metric': 'Total Videos', 'Value': stats.get('total_videos', 'N/A')})
+        summary_stats.append({'Metric': 'Real Videos', 'Value': stats.get('real_videos', 'N/A')})
+        summary_stats.append({'Metric': 'Fake Videos', 'Value': stats.get('fake_videos', 'N/A')})
+        if stats.get('total_videos'):
+            summary_stats.append({'Metric': 'Real Percentage', 'Value': f"{(stats.get('real_videos', 0) / stats.get('total_videos', 1) * 100):.2f}%"})
+            summary_stats.append({'Metric': 'Fake Percentage', 'Value': f"{(stats.get('fake_videos', 0) / stats.get('total_videos', 1) * 100):.2f}%"})
+    
+    if summary_stats:
+        summary_df = pd.DataFrame(summary_stats)
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    
+    st.markdown("---")
     st.markdown("""
     <div class="info-box">
         <h4>📝 Dataset Insights</h4>
         <ul>
-            <li><strong>Class Imbalance:</strong> Dataset has more Fake videos (91.9%) than Real (8.1%)</li>
+            <li><strong>Class Imbalance:</strong> Dataset has significantly more Fake videos than Real videos</li>
             <li><strong>Data Split:</strong> 80% Training, 20% Validation</li>
             <li><strong>Preprocessing:</strong> Videos converted to 16 frames, resized to 224x224</li>
             <li><strong>Augmentation:</strong> Random horizontal flip, rotation, color jitter</li>
+            <li><strong>Recommendation:</strong> Use class weights or oversampling to handle imbalance</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -679,17 +863,17 @@ elif page == "🎥 Video Upload & Testing":
                         <div class="prediction-box {'real-prediction' if pred_class == 0 else 'fake-prediction'}">
                             <h3>{label_text}</h3>
                             <p><strong>Confidence:</strong> {confidence*100:.2f}%</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
+    </div>
+    """, unsafe_allow_html=True)
+    
                     with col2:
                         # Probability bar chart
                         prob_df = pd.DataFrame({
                             'Class': ['Celeb-Real', 'Fake'],
                             'Probability': [probabilities[0], probabilities[1]]
-                        })
-                        
-                        fig = px.bar(
+    })
+    
+    fig = px.bar(
                             prob_df,
                             x='Class',
                             y='Probability',
@@ -700,8 +884,8 @@ elif page == "🎥 Video Upload & Testing":
                         )
                         fig.update_layout(height=300, yaxis_title='Probability', yaxis_range=[0, 1])
                         fig.update_traces(textposition='outside')
-                        st.plotly_chart(fig, use_container_width=True)
-                
+    st.plotly_chart(fig, use_container_width=True)
+    
                 except Exception as e:
                     st.error(f"Error with {model_name}: {str(e)}")
                     predictions[model_name] = None
@@ -735,8 +919,8 @@ elif page == "🎥 Video Upload & Testing":
                     'Model': list(predictions.keys()),
                     'Confidence': [p['confidence']*100 for p in predictions.values()]
                 })
-                
-                fig = px.bar(
+    
+    fig = px.bar(
                     conf_data,
                     x='Model',
                     y='Confidence',
@@ -747,8 +931,8 @@ elif page == "🎥 Video Upload & Testing":
                 )
                 fig.update_layout(height=400, yaxis_title='Confidence (%)', yaxis_range=[0, 100])
                 fig.update_traces(textposition='outside')
-                st.plotly_chart(fig, use_container_width=True)
-            
+        st.plotly_chart(fig, use_container_width=True)
+    
             with col2:
                 # Agreement visualization
                 predictions_list = [p['label'] for p in predictions.values()]
@@ -777,15 +961,15 @@ elif page == "🎥 Video Upload & Testing":
                 <h2>Consensus: {consensus_label}</h2>
                 <p><strong>Average Confidence:</strong> {consensus_confidence*100:.2f}%</p>
                 <p><strong>Agreement:</strong> {sum(1 for p in predictions.values() if p['class'] == consensus_class)}/3 models</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
+    </div>
+    """, unsafe_allow_html=True)
+    
         # Cleanup
         os.unlink(tmp_path)
     
     else:
         st.info("👆 Please upload a video file to begin testing.")
-        st.markdown("""
+    st.markdown("""
         ### 📝 Instructions:
         1. Upload a video file (MP4, AVI, MOV, MKV)
         2. Wait for frame extraction
