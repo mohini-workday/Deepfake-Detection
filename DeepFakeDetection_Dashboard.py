@@ -420,32 +420,6 @@ if page == "🏠 Home":
     """)
 
 # ============================================================================
-# DATA LOADING FUNCTIONS
-# ============================================================================
-
-@st.cache_data
-def load_dataset_stats():
-    """Load dataset statistics from saved files"""
-    stats_path = PROJECT_ROOT / "dashboard_data" / "dataset_stats.json"
-    label_path = PROJECT_ROOT / "dashboard_data" / "label_distribution.csv"
-    
-    if stats_path.exists():
-        import json
-        with open(stats_path, 'r') as f:
-            stats = json.load(f)
-        return stats, None
-    elif label_path.exists():
-        label_df = pd.read_csv(label_path)
-        return None, label_df
-    else:
-        # Fallback to hardcoded data
-        return None, pd.DataFrame({
-            'Label': ['Fake', 'Celeb-Real'],
-            'Count': [5582, 493],
-            'Percentage': [91.9, 8.1]
-        })
-
-# ============================================================================
 # PAGE 2: DATASET OVERVIEW
 # ============================================================================
 elif page == "📊 Dataset Overview":
@@ -608,8 +582,8 @@ elif page == "📊 Dataset Overview":
             yaxis_title='Number of Videos',
             height=400
         )
-    st.plotly_chart(fig, use_container_width=True)
-    
+        st.plotly_chart(fig, use_container_width=True)
+        
         # Imbalance ratio
         if len(imbalance_data) == 2:
             ratio = imbalance_data.iloc[1]['Count'] / imbalance_data.iloc[0]['Count'] if imbalance_data.iloc[0]['Count'] > 0 else 0
@@ -871,9 +845,9 @@ elif page == "🎥 Video Upload & Testing":
                         prob_df = pd.DataFrame({
                             'Class': ['Celeb-Real', 'Fake'],
                             'Probability': [probabilities[0], probabilities[1]]
-    })
-    
-    fig = px.bar(
+                        })
+                        
+                        fig = px.bar(
                             prob_df,
                             x='Class',
                             y='Probability',
@@ -884,7 +858,7 @@ elif page == "🎥 Video Upload & Testing":
                         )
                         fig.update_layout(height=300, yaxis_title='Probability', yaxis_range=[0, 1])
                         fig.update_traces(textposition='outside')
-    st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, use_container_width=True)
     
                 except Exception as e:
                     st.error(f"Error with {model_name}: {str(e)}")
@@ -919,8 +893,8 @@ elif page == "🎥 Video Upload & Testing":
                     'Model': list(predictions.keys()),
                     'Confidence': [p['confidence']*100 for p in predictions.values()]
                 })
-    
-    fig = px.bar(
+                
+                fig = px.bar(
                     conf_data,
                     x='Model',
                     y='Confidence',
@@ -931,8 +905,8 @@ elif page == "🎥 Video Upload & Testing":
                 )
                 fig.update_layout(height=400, yaxis_title='Confidence (%)', yaxis_range=[0, 100])
                 fig.update_traces(textposition='outside')
-        st.plotly_chart(fig, use_container_width=True)
-    
+                st.plotly_chart(fig, use_container_width=True)
+            
             with col2:
                 # Agreement visualization
                 predictions_list = [p['label'] for p in predictions.values()]
