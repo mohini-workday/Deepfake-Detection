@@ -716,25 +716,25 @@ elif page == "📈 Training & Evaluation":
     
     if eval_results is None:
         st.info("💡 **Note**: To view ROC curves and confusion matrices, please run Cell 12 in the notebook to generate evaluation results. The results will be saved and displayed here automatically.")
-        
-        st.subheader("Expected Training Metrics")
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        metrics = {
+    
+    st.subheader("Expected Training Metrics")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    metrics = {
             'Accuracy': '91-93%',
             'Precision': '91-93%',
             'Recall': '91-93%',
             'F1-Score': '91-93%',
             'ROC-AUC': '95-98%'
-        }
-        
-        for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
-            with col:
-                st.metric(metric, value)
-        
-        st.subheader("Training Configuration")
-        st.markdown("""
+    }
+    
+    for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
+        with col:
+            st.metric(metric, value)
+    
+    st.subheader("Training Configuration")
+    st.markdown("""
         - **Epochs**: 2-10 (configurable)
         - **Batch Size**: 4
         - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
@@ -772,60 +772,83 @@ elif page == "📈 Training & Evaluation":
         # ============================================================================
         st.subheader("📈 ROC Curves - Model Comparison")
         
-        # Create ROC curves using Plotly
-        fig_roc = go.Figure()
+        # Check if we have actual data (not empty arrays)
+        has_data = False
+        for model_name, results in eval_results.items():
+            if (len(results.get('true_labels', [])) > 0 and 
+                len(results.get('probabilities', [])) > 0):
+                has_data = True
+                break
         
-        colors = ['#3498db', '#e74c3c', '#2ecc71']  # Blue, Red, Green
-        model_names_list = list(eval_results.keys())
-        
-        for idx, (model_name, results) in enumerate(eval_results.items()):
-            # Calculate ROC curve
-            fpr, tpr, thresholds = roc_curve(
-                results['true_labels'], 
-                results['probabilities']
-            )
-            roc_auc = results['roc_auc']
+        if not has_data:
+            st.warning("⚠️ **Note**: ROC curves require actual prediction data. The evaluation_results.json file exists but contains empty arrays. Please run Cell 12 in the notebook to generate actual evaluation data with predictions and probabilities.")
+            st.info("💡 **To generate the data**: Run Cell 12 in DeepFakeDetection.ipynb after training models. This will populate the arrays with actual predictions.")
+        else:
+            # Create ROC curves using Plotly
+            fig_roc = go.Figure()
             
-            # Add ROC curve trace
-            fig_roc.add_trace(go.Scatter(
-                x=fpr,
-                y=tpr,
-                mode='lines',
-                name=f"{model_name} (AUC = {roc_auc:.4f})",
-                line=dict(color=colors[idx % len(colors)], width=3),
-                hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<extra></extra>'
-            ))
+            colors = ['#3498db', '#e74c3c', '#2ecc71']  # Blue, Red, Green
+            model_names_list = list(eval_results.keys())
+            
+            for idx, (model_name, results) in enumerate(eval_results.items()):
+                # Convert to numpy arrays if they're lists
+                true_labels = np.array(results['true_labels'])
+                probabilities = np.array(results['probabilities'])
+                
+                # Skip if arrays are empty
+                if len(true_labels) == 0 or len(probabilities) == 0:
+                    st.warning(f"⚠️ {model_name}: No data available for ROC curve")
+                    continue
+                
+                # Calculate ROC curve
+                try:
+                    fpr, tpr, thresholds = roc_curve(true_labels, probabilities)
+                    roc_auc = results['roc_auc']
+                    
+                    # Add ROC curve trace
+                    fig_roc.add_trace(go.Scatter(
+                        x=fpr,
+                        y=tpr,
+                        mode='lines',
+                        name=f"{model_name} (AUC = {roc_auc:.4f})",
+                        line=dict(color=colors[idx % len(colors)], width=3),
+                        hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<extra></extra>'
+                    ))
+                except Exception as e:
+                    st.error(f"Error generating ROC curve for {model_name}: {str(e)}")
+                    continue
         
-        # Add diagonal line (random classifier)
-        fig_roc.add_trace(go.Scatter(
-            x=[0, 1],
-            y=[0, 1],
-            mode='lines',
-            name='Random Classifier (AUC = 0.5000)',
-            line=dict(color='black', width=2, dash='dash'),
-            hovertemplate='Random Classifier<extra></extra>'
-        ))
-        
-        # Update layout
-        fig_roc.update_layout(
-            title='ROC Curves - Model Comparison',
-            xaxis_title='False Positive Rate',
-            yaxis_title='True Positive Rate',
-            width=900,
-            height=700,
-            hovermode='closest',
-            legend=dict(
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01
-            ),
-            template='plotly_white',
-            xaxis=dict(range=[0, 1]),
-            yaxis=dict(range=[0, 1.05])
-        )
-        
-        st.plotly_chart(fig_roc, use_container_width=True)
+            # Add diagonal line (random classifier) only if we have curves
+            if len(fig_roc.data) > 0:
+                fig_roc.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 1],
+                    mode='lines',
+                    name='Random Classifier (AUC = 0.5000)',
+                    line=dict(color='black', width=2, dash='dash'),
+                    hovertemplate='Random Classifier<extra></extra>'
+                ))
+                
+                # Update layout
+                fig_roc.update_layout(
+                    title='ROC Curves - Model Comparison',
+                    xaxis_title='False Positive Rate',
+                    yaxis_title='True Positive Rate',
+                    width=900,
+                    height=700,
+                    hovermode='closest',
+                    legend=dict(
+                        yanchor="top",
+                        y=0.99,
+                        xanchor="left",
+                        x=0.01
+                    ),
+                    template='plotly_white',
+                    xaxis=dict(range=[0, 1]),
+                    yaxis=dict(range=[0, 1.05])
+                )
+                
+                st.plotly_chart(fig_roc, use_container_width=True)
         
         st.markdown("""
         **Interpretation:**
@@ -842,131 +865,174 @@ elif page == "📈 Training & Evaluation":
         # ============================================================================
         st.subheader("📊 Confusion Matrices - Model Comparison")
         
-        class_names = ['Celeb-Real', 'Fake']
+        # Check if we have data for confusion matrices
+        has_cm_data = False
+        for model_name, results in eval_results.items():
+            if (len(results.get('true_labels', [])) > 0 and 
+                len(results.get('predictions', [])) > 0):
+                has_cm_data = True
+                break
         
-        # Create tabs for each model's confusion matrix
-        cm_tabs = st.tabs([f"{name} Confusion Matrix" for name in eval_results.keys()])
-        
-        for tab_idx, (model_name, results) in enumerate(eval_results.items()):
-            with cm_tabs[tab_idx]:
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Calculate confusion matrix
-                    cm = confusion_matrix(results['true_labels'], results['predictions'])
+        if not has_cm_data:
+            st.warning("⚠️ **Note**: Confusion matrices require actual prediction data. Please run Cell 12 in the notebook to generate actual evaluation data.")
+        else:
+            class_names = ['Celeb-Real', 'Fake']
+            
+            # Create tabs for each model's confusion matrix
+            cm_tabs = st.tabs([f"{name} Confusion Matrix" for name in eval_results.keys()])
+            
+            for tab_idx, (model_name, results) in enumerate(eval_results.items()):
+                with cm_tabs[tab_idx]:
+                    col1, col2 = st.columns([2, 1])
                     
-                    # Normalize confusion matrix
-                    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+                    with col1:
+                        # Convert to numpy arrays if they're lists
+                        true_labels = np.array(results['true_labels'])
+                        predictions = np.array(results['predictions'])
+                        
+                        # Skip if arrays are empty
+                        if len(true_labels) == 0 or len(predictions) == 0:
+                            st.warning(f"⚠️ {model_name}: No data available for confusion matrix")
+                            continue
+                        
+                        # Calculate confusion matrix
+                        try:
+                            cm = confusion_matrix(true_labels, predictions)
+                            
+                            # Normalize confusion matrix
+                            cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+                            
+                            # Create heatmap using Plotly
+                            fig_cm = go.Figure(data=go.Heatmap(
+                                z=cm,
+                                x=class_names,
+                                y=class_names,
+                                colorscale='Blues',
+                                text=[[f"{cm[i, j]}<br>({cm_normalized[i, j]:.1f}%)" 
+                                       for j in range(len(class_names))] 
+                                      for i in range(len(class_names))],
+                                texttemplate="%{text}",
+                                textfont={"size": 14, "color": "white"},
+                                colorbar=dict(title="Count")
+                            ))
+                            
+                            fig_cm.update_layout(
+                                title=f'{model_name} - Confusion Matrix',
+                                xaxis_title='Predicted Label',
+                                yaxis_title='True Label',
+                                width=600,
+                                height=500,
+                                template='plotly_white'
+                            )
+                            
+                            st.plotly_chart(fig_cm, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error generating confusion matrix for {model_name}: {str(e)}")
                     
-                    # Create heatmap using Plotly
-                    fig_cm = go.Figure(data=go.Heatmap(
-                        z=cm,
-                        x=class_names,
-                        y=class_names,
-                        colorscale='Blues',
-                        text=[[f"{cm[i, j]}<br>({cm_normalized[i, j]:.1f}%)" 
-                               for j in range(len(class_names))] 
-                              for i in range(len(class_names))],
-                        texttemplate="%{text}",
-                        textfont={"size": 14, "color": "white"},
-                        colorbar=dict(title="Count")
-                    ))
-                    
-                    fig_cm.update_layout(
-                        title=f'{model_name} - Confusion Matrix',
-                        xaxis_title='Predicted Label',
-                        yaxis_title='True Label',
-                        width=600,
-                        height=500,
-                        template='plotly_white'
-                    )
-                    
-                    st.plotly_chart(fig_cm, use_container_width=True)
-                
-                with col2:
-                    st.markdown("### Metrics")
-                    st.metric("Accuracy", f"{results['accuracy']*100:.2f}%")
-                    st.metric("Precision", f"{results['precision']*100:.2f}%")
-                    st.metric("Recall", f"{results['recall']*100:.2f}%")
-                    st.metric("F1-Score", f"{results['f1']*100:.2f}%")
-                    st.metric("ROC-AUC", f"{results['roc_auc']:.4f}")
-                    
-                    st.markdown("### Confusion Matrix")
-                    st.markdown("""
-                    - **True Negative (TN)**: Correctly predicted Real
-                    - **False Positive (FP)**: Incorrectly predicted Fake (Real labeled as Fake)
-                    - **False Negative (FN)**: Incorrectly predicted Real (Fake labeled as Real)
-                    - **True Positive (TP)**: Correctly predicted Fake
-                    """)
+                    with col2:
+                        st.markdown("### Metrics")
+                        st.metric("Accuracy", f"{results['accuracy']*100:.2f}%")
+                        st.metric("Precision", f"{results['precision']*100:.2f}%")
+                        st.metric("Recall", f"{results['recall']*100:.2f}%")
+                        st.metric("F1-Score", f"{results['f1']*100:.2f}%")
+                        st.metric("ROC-AUC", f"{results['roc_auc']:.4f}")
+                        
+                        st.markdown("### Confusion Matrix")
+                        st.markdown("""
+                        - **True Negative (TN)**: Correctly predicted Real
+                        - **False Positive (FP)**: Incorrectly predicted Fake (Real labeled as Fake)
+                        - **False Negative (FN)**: Incorrectly predicted Real (Fake labeled as Real)
+                        - **True Positive (TP)**: Correctly predicted Fake
+                        """)
         
         st.markdown("---")
         
         # ============================================================================
         # NORMALIZED CONFUSION MATRICES
         # ============================================================================
-        st.subheader("📊 Normalized Confusion Matrices (Percentages)")
-        
-        # Create normalized confusion matrices
-        fig_norm, axes = plt.subplots(1, len(eval_results), figsize=(6*len(eval_results), 5))
-        
-        if len(eval_results) == 1:
-            axes = [axes]
-        
-        for idx, (model_name, results) in enumerate(eval_results.items()):
-            cm = confusion_matrix(results['true_labels'], results['predictions'])
-            cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+        if has_cm_data:
+            st.subheader("📊 Normalized Confusion Matrices (Percentages)")
             
-            sns.heatmap(
-                cm_normalized,
-                annot=True,
-                fmt='.2f',
-                cmap='Oranges',
-                xticklabels=class_names,
-                yticklabels=class_names,
-                ax=axes[idx],
-                cbar_kws={'label': 'Percentage (%)'}
-            )
+            # Create normalized confusion matrices
+            fig_norm, axes = plt.subplots(1, len(eval_results), figsize=(6*len(eval_results), 5))
             
-            axes[idx].set_title(f'{model_name}\nNormalized Confusion Matrix', 
-                               fontsize=12, fontweight='bold')
-            axes[idx].set_xlabel('Predicted Label', fontsize=11)
-            axes[idx].set_ylabel('True Label', fontsize=11)
-        
-        plt.tight_layout()
-        st.pyplot(fig_norm)
+            if len(eval_results) == 1:
+                axes = [axes]
+            
+            for idx, (model_name, results) in enumerate(eval_results.items()):
+                true_labels = np.array(results['true_labels'])
+                predictions = np.array(results['predictions'])
+                
+                if len(true_labels) == 0 or len(predictions) == 0:
+                    continue
+                
+                try:
+                    cm = confusion_matrix(true_labels, predictions)
+                    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+                    
+                    sns.heatmap(
+                        cm_normalized,
+                        annot=True,
+                        fmt='.2f',
+                        cmap='Oranges',
+                        xticklabels=class_names,
+                        yticklabels=class_names,
+                        ax=axes[idx],
+                        cbar_kws={'label': 'Percentage (%)'}
+                    )
+                    
+                    axes[idx].set_title(f'{model_name}\nNormalized Confusion Matrix', 
+                                       fontsize=12, fontweight='bold')
+                    axes[idx].set_xlabel('Predicted Label', fontsize=11)
+                    axes[idx].set_ylabel('True Label', fontsize=11)
+                except Exception as e:
+                    st.error(f"Error generating normalized confusion matrix for {model_name}: {str(e)}")
+            
+            plt.tight_layout()
+            st.pyplot(fig_norm)
         
         st.markdown("---")
         
         # ============================================================================
         # CLASSIFICATION REPORTS
         # ============================================================================
-        st.subheader("📋 Detailed Classification Reports")
-        
-        for model_name, results in eval_results.items():
-            with st.expander(f"{model_name} - Classification Report"):
-                report = classification_report(
-                    results['true_labels'],
-                    results['predictions'],
-                    target_names=class_names,
-                    digits=4,
-                    output_dict=True
-                )
+        if has_cm_data:
+            st.subheader("📋 Detailed Classification Reports")
+            
+            for model_name, results in eval_results.items():
+                true_labels = np.array(results['true_labels'])
+                predictions = np.array(results['predictions'])
                 
-                # Convert to DataFrame for better display
-                report_df = pd.DataFrame(report).transpose()
-                st.dataframe(report_df, use_container_width=True)
+                if len(true_labels) == 0 or len(predictions) == 0:
+                    continue
+                
+                with st.expander(f"{model_name} - Classification Report"):
+                    try:
+                        report = classification_report(
+                            true_labels,
+                            predictions,
+                            target_names=class_names,
+                            digits=4,
+                            output_dict=True
+                        )
+                        
+                        # Convert to DataFrame for better display
+                        report_df = pd.DataFrame(report).transpose()
+                        st.dataframe(report_df, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error generating classification report for {model_name}: {str(e)}")
         
         st.markdown("---")
         
         st.subheader("Training Configuration")
         st.markdown("""
         - **Epochs**: 2-10 (configurable)
-        - **Batch Size**: 4
-        - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
-        - **Optimizer**: Adam with weight decay (1e-4)
-        - **Scheduler**: ReduceLROnPlateau
-        - **Loss Function**: CrossEntropyLoss
-        """)
+    - **Batch Size**: 4
+    - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
+    - **Optimizer**: Adam with weight decay (1e-4)
+    - **Scheduler**: ReduceLROnPlateau
+    - **Loss Function**: CrossEntropyLoss
+    """)
 
 # ============================================================================
 # PAGE 5: MODEL COMPARISON
