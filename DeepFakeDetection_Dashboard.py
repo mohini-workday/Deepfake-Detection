@@ -716,25 +716,25 @@ elif page == "📈 Training & Evaluation":
     
     if eval_results is None:
         st.info("💡 **Note**: To view ROC curves and confusion matrices, please run Cell 12 in the notebook to generate evaluation results. The results will be saved and displayed here automatically.")
-    
-    st.subheader("Expected Training Metrics")
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    metrics = {
+        
+        st.subheader("Expected Training Metrics")
+        
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        metrics = {
             'Accuracy': '91-93%',
             'Precision': '91-93%',
             'Recall': '91-93%',
             'F1-Score': '91-93%',
             'ROC-AUC': '95-98%'
-    }
-    
-    for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
-        with col:
-            st.metric(metric, value)
-    
-    st.subheader("Training Configuration")
-    st.markdown("""
+        }
+        
+        for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
+            with col:
+                st.metric(metric, value)
+        
+        st.subheader("Training Configuration")
+        st.markdown("""
         - **Epochs**: 2-10 (configurable)
         - **Batch Size**: 4
         - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
