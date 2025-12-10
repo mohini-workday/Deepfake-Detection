@@ -20,6 +20,11 @@ import cv2
 import tempfile
 import os
 import sys
+from sklearn.metrics import (
+    roc_curve, auc, roc_auc_score,
+    confusion_matrix, classification_report,
+    accuracy_score, precision_score, recall_score, f1_score
+)
 
 warnings.filterwarnings('ignore')
 
@@ -52,6 +57,18 @@ def load_dataset_stats():
             'Count': [5582, 493],
             'Percentage': [91.9, 8.1]
         })
+
+@st.cache_data
+def load_evaluation_results():
+    """Load evaluation results from saved files (if available)"""
+    eval_path = PROJECT_ROOT / "evaluation_results.json"
+    
+    if eval_path.exists():
+        import json
+        with open(eval_path, 'r') as f:
+            results = json.load(f)
+        return results
+    return None
 
 # Page configuration
 st.set_page_config(
@@ -694,33 +711,262 @@ elif page == "🤖 Model Architectures":
 elif page == "📈 Training & Evaluation":
     st.header("📈 Training & Evaluation")
     
-    st.info("💡 **Note**: Training results will be displayed here after models are trained. You can load saved model checkpoints to view training history.")
+    # Try to load evaluation results
+    eval_results = load_evaluation_results()
     
-    st.subheader("Expected Training Metrics")
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    metrics = {
-        'Accuracy': '95-100%',
-        'Precision': '94-100%',
-        'Recall': '96-100%',
-        'F1-Score': '95-100%',
-        'ROC-AUC': '98-100%'
-    }
-    
-    for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
-        with col:
-            st.metric(metric, value)
-    
-    st.subheader("Training Configuration")
-    st.markdown("""
-    - **Epochs**: 10
-    - **Batch Size**: 4
-    - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
-    - **Optimizer**: Adam with weight decay (1e-4)
-    - **Scheduler**: ReduceLROnPlateau
-    - **Loss Function**: CrossEntropyLoss
-    """)
+    if eval_results is None:
+        st.info("💡 **Note**: To view ROC curves and confusion matrices, please run Cell 12 in the notebook to generate evaluation results. The results will be saved and displayed here automatically.")
+        
+        st.subheader("Expected Training Metrics")
+        
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        metrics = {
+            'Accuracy': '91-93%',
+            'Precision': '91-93%',
+            'Recall': '91-93%',
+            'F1-Score': '91-93%',
+            'ROC-AUC': '95-98%'
+        }
+        
+        for col, (metric, value) in zip([col1, col2, col3, col4, col5], metrics.items()):
+            with col:
+                st.metric(metric, value)
+        
+        st.subheader("Training Configuration")
+        st.markdown("""
+        - **Epochs**: 2-10 (configurable)
+        - **Batch Size**: 4
+        - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
+        - **Optimizer**: Adam with weight decay (1e-4)
+        - **Scheduler**: ReduceLROnPlateau
+        - **Loss Function**: CrossEntropyLoss
+        """)
+    else:
+        # Display actual evaluation results
+        st.success("✅ Evaluation results loaded successfully!")
+        
+        # ============================================================================
+        # METRICS SUMMARY
+        # ============================================================================
+        st.subheader("📊 Model Performance Metrics")
+        
+        metrics_data = []
+        for model_name, results in eval_results.items():
+            metrics_data.append({
+                'Model': model_name,
+                'Accuracy (%)': f"{results['accuracy']*100:.2f}",
+                'Precision (%)': f"{results['precision']*100:.2f}",
+                'Recall (%)': f"{results['recall']*100:.2f}",
+                'F1-Score (%)': f"{results['f1']*100:.2f}",
+                'ROC-AUC': f"{results['roc_auc']:.4f}"
+            })
+        
+        metrics_df = pd.DataFrame(metrics_data)
+        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # ============================================================================
+        # ROC CURVES
+        # ============================================================================
+        st.subheader("📈 ROC Curves - Model Comparison")
+        
+        # Create ROC curves using Plotly
+        fig_roc = go.Figure()
+        
+        colors = ['#3498db', '#e74c3c', '#2ecc71']  # Blue, Red, Green
+        model_names_list = list(eval_results.keys())
+        
+        for idx, (model_name, results) in enumerate(eval_results.items()):
+            # Calculate ROC curve
+            fpr, tpr, thresholds = roc_curve(
+                results['true_labels'], 
+                results['probabilities']
+            )
+            roc_auc = results['roc_auc']
+            
+            # Add ROC curve trace
+            fig_roc.add_trace(go.Scatter(
+                x=fpr,
+                y=tpr,
+                mode='lines',
+                name=f"{model_name} (AUC = {roc_auc:.4f})",
+                line=dict(color=colors[idx % len(colors)], width=3),
+                hovertemplate='FPR: %{x:.3f}<br>TPR: %{y:.3f}<extra></extra>'
+            ))
+        
+        # Add diagonal line (random classifier)
+        fig_roc.add_trace(go.Scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode='lines',
+            name='Random Classifier (AUC = 0.5000)',
+            line=dict(color='black', width=2, dash='dash'),
+            hovertemplate='Random Classifier<extra></extra>'
+        ))
+        
+        # Update layout
+        fig_roc.update_layout(
+            title='ROC Curves - Model Comparison',
+            xaxis_title='False Positive Rate',
+            yaxis_title='True Positive Rate',
+            width=900,
+            height=700,
+            hovermode='closest',
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01
+            ),
+            template='plotly_white',
+            xaxis=dict(range=[0, 1]),
+            yaxis=dict(range=[0, 1.05])
+        )
+        
+        st.plotly_chart(fig_roc, use_container_width=True)
+        
+        st.markdown("""
+        **Interpretation:**
+        - **ROC Curve**: Shows the trade-off between True Positive Rate (TPR) and False Positive Rate (FPR)
+        - **AUC (Area Under Curve)**: Higher AUC indicates better model performance
+        - **Diagonal Line**: Represents a random classifier (AUC = 0.5)
+        - **Best Model**: The curve closest to the top-left corner (highest AUC) performs best
+        """)
+        
+        st.markdown("---")
+        
+        # ============================================================================
+        # CONFUSION MATRICES
+        # ============================================================================
+        st.subheader("📊 Confusion Matrices - Model Comparison")
+        
+        class_names = ['Celeb-Real', 'Fake']
+        
+        # Create tabs for each model's confusion matrix
+        cm_tabs = st.tabs([f"{name} Confusion Matrix" for name in eval_results.keys()])
+        
+        for tab_idx, (model_name, results) in enumerate(eval_results.items()):
+            with cm_tabs[tab_idx]:
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    # Calculate confusion matrix
+                    cm = confusion_matrix(results['true_labels'], results['predictions'])
+                    
+                    # Normalize confusion matrix
+                    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+                    
+                    # Create heatmap using Plotly
+                    fig_cm = go.Figure(data=go.Heatmap(
+                        z=cm,
+                        x=class_names,
+                        y=class_names,
+                        colorscale='Blues',
+                        text=[[f"{cm[i, j]}<br>({cm_normalized[i, j]:.1f}%)" 
+                               for j in range(len(class_names))] 
+                              for i in range(len(class_names))],
+                        texttemplate="%{text}",
+                        textfont={"size": 14, "color": "white"},
+                        colorbar=dict(title="Count")
+                    ))
+                    
+                    fig_cm.update_layout(
+                        title=f'{model_name} - Confusion Matrix',
+                        xaxis_title='Predicted Label',
+                        yaxis_title='True Label',
+                        width=600,
+                        height=500,
+                        template='plotly_white'
+                    )
+                    
+                    st.plotly_chart(fig_cm, use_container_width=True)
+                
+                with col2:
+                    st.markdown("### Metrics")
+                    st.metric("Accuracy", f"{results['accuracy']*100:.2f}%")
+                    st.metric("Precision", f"{results['precision']*100:.2f}%")
+                    st.metric("Recall", f"{results['recall']*100:.2f}%")
+                    st.metric("F1-Score", f"{results['f1']*100:.2f}%")
+                    st.metric("ROC-AUC", f"{results['roc_auc']:.4f}")
+                    
+                    st.markdown("### Confusion Matrix")
+                    st.markdown("""
+                    - **True Negative (TN)**: Correctly predicted Real
+                    - **False Positive (FP)**: Incorrectly predicted Fake (Real labeled as Fake)
+                    - **False Negative (FN)**: Incorrectly predicted Real (Fake labeled as Real)
+                    - **True Positive (TP)**: Correctly predicted Fake
+                    """)
+        
+        st.markdown("---")
+        
+        # ============================================================================
+        # NORMALIZED CONFUSION MATRICES
+        # ============================================================================
+        st.subheader("📊 Normalized Confusion Matrices (Percentages)")
+        
+        # Create normalized confusion matrices
+        fig_norm, axes = plt.subplots(1, len(eval_results), figsize=(6*len(eval_results), 5))
+        
+        if len(eval_results) == 1:
+            axes = [axes]
+        
+        for idx, (model_name, results) in enumerate(eval_results.items()):
+            cm = confusion_matrix(results['true_labels'], results['predictions'])
+            cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+            
+            sns.heatmap(
+                cm_normalized,
+                annot=True,
+                fmt='.2f',
+                cmap='Oranges',
+                xticklabels=class_names,
+                yticklabels=class_names,
+                ax=axes[idx],
+                cbar_kws={'label': 'Percentage (%)'}
+            )
+            
+            axes[idx].set_title(f'{model_name}\nNormalized Confusion Matrix', 
+                               fontsize=12, fontweight='bold')
+            axes[idx].set_xlabel('Predicted Label', fontsize=11)
+            axes[idx].set_ylabel('True Label', fontsize=11)
+        
+        plt.tight_layout()
+        st.pyplot(fig_norm)
+        
+        st.markdown("---")
+        
+        # ============================================================================
+        # CLASSIFICATION REPORTS
+        # ============================================================================
+        st.subheader("📋 Detailed Classification Reports")
+        
+        for model_name, results in eval_results.items():
+            with st.expander(f"{model_name} - Classification Report"):
+                report = classification_report(
+                    results['true_labels'],
+                    results['predictions'],
+                    target_names=class_names,
+                    digits=4,
+                    output_dict=True
+                )
+                
+                # Convert to DataFrame for better display
+                report_df = pd.DataFrame(report).transpose()
+                st.dataframe(report_df, use_container_width=True)
+        
+        st.markdown("---")
+        
+        st.subheader("Training Configuration")
+        st.markdown("""
+        - **Epochs**: 2-10 (configurable)
+        - **Batch Size**: 4
+        - **Learning Rate**: 0.001 (Simple CNN), 0.0001 (Transfer Learning models)
+        - **Optimizer**: Adam with weight decay (1e-4)
+        - **Scheduler**: ReduceLROnPlateau
+        - **Loss Function**: CrossEntropyLoss
+        """)
 
 # ============================================================================
 # PAGE 5: MODEL COMPARISON
