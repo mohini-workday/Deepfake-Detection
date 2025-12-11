@@ -88,9 +88,9 @@ Final Project/
 
 ## 📊 Key Results
 
-- **Best Model**: Optimized ResNet18
-- **Accuracy**: ~100% on test set
-- **All Metrics**: Perfect scores (1.0) for Precision, Recall, F1-Score, ROC-AUC
+- **Best Model**: EfficientNet
+- **Accuracy**:  92.84 
+- **All Metrics**: 91.99 for Precision, 92.84 for Recall,90.59 for F1-Score,0.8578 for ROC-AUC
 
 ## 🎯 Features
 
