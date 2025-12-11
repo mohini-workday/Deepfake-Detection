@@ -114,7 +114,7 @@ The Streamlit dashboard (`DeepFakeDetection_Dashboard.py`) provides comprehensiv
 
 ## 👤 Author
 
-Mohini - ML PostGrad - Deep Learning Final Project
+Poonam and Mohini - ML PostGrad - Deep Learning Final Project
 
 ## 📝 License
 
