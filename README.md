@@ -10,6 +10,7 @@ A comprehensive machine learning project to detect deepfake videos with high acc
 
 **Dataset**: 
 - **Source**: [Hemgg/deep-fake-detection-dfd-entire-original-dataset](https://huggingface.co/datasets/Hemgg/deep-fake-detection-dfd-entire-original-dataset)
+- **Google Drive**: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
 - **Total Videos**: 6,075 training videos (4,860 train + 1,215 validation) + 15 test videos
 - **Celeb-Real**: 493 real videos (Label: 0)
 - **Celeb-Synthesis (Fake)**: 5,582 fake videos (Label: 1)
@@ -115,6 +116,7 @@ Final Project/
 
 ### 1. Data Loading & Exploration
 - Load dataset from local folders (Celeb-Real, Celeb-Synthesis, Testing)
+- Dataset source: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
 - Analyze dataset structure and class distribution
 - Visualize sample images/videos
 - Generate dataset statistics and label distribution analysis
@@ -149,9 +151,12 @@ Final Project/
 
 ## 📊 Key Results
 
-- **Best Model**: Optimized ResNet18
-- **Accuracy**: ~100% on test set
-- **All Metrics**: Perfect scores (1.0) for Precision, Recall, F1-Score, ROC-AUC
+- **Best Model**: EfficientNet
+- **Accuracy**: 92.84%
+- **Precision**: 91.99%
+- **Recall**: 92.84%
+- **F1-Score**: 90.59%
+- **ROC-AUC**: 0.8578
 
 ## 🎯 Features
 
@@ -219,7 +224,7 @@ The project is ready for deployment on:
 
 ## 👤 Authors
 
-Mohini & Poonam - ML PostGrad - Deep Learning Final Project
+Poonam and Mohini - ML PostGrad - Deep Learning Final Project
 
 ## 📝 License
 

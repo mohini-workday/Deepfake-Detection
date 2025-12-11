@@ -1273,6 +1273,6 @@ st.sidebar.markdown("""
 
 Comprehensive analysis and video testing for deepfake detection models
 
-**Author**: Poonam andMohini  
+**Author**: Poonam and Mohini  
 **Project**: ML PostGrad - Deep Learning Final Project
 """)
