@@ -9,8 +9,7 @@ A comprehensive machine learning project to detect deepfake videos with high acc
 **Business Value**: Flagging misinformation / Protecting digital identity
 
 **Dataset**: 
-- **Source**: [Hemgg/deep-fake-detection-dfd-entire-original-dataset](https://huggingface.co/datasets/Hemgg/deep-fake-detection-dfd-entire-original-dataset)
-- **Google Drive**: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
+- **Source Google Drive Link**: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
 - **Total Videos**: 6,075 training videos (4,860 train + 1,215 validation) + 15 test videos
 - **Celeb-Real**: 493 real videos (Label: 0)
 - **Celeb-Synthesis (Fake)**: 5,582 fake videos (Label: 1)
