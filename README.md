@@ -8,7 +8,7 @@ A comprehensive machine learning project to detect deepfake videos with high acc
 
 **Business Value**: Flagging misinformation / Protecting digital identity
 
-**Dataset**: [Hemgg/deep-fake-detection-dfd-entire-original-dataset](https://huggingface.co/datasets/Hemgg/deep-fake-detection-dfd-entire-original-dataset)
+**Dataset**: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
 
 ## 🚀 Quick Start
 
