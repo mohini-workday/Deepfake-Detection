@@ -1,0 +1,16 @@
+{
+  "total_videos": 6075,
+  "real_videos": 493,
+  "fake_videos": 5582,
+  "label_distribution": {
+    "Fake": 5582,
+    "Celeb-Real": 493
+  },
+  "video_formats": {
+    ".mp4": 6075
+  },
+  "folders": {
+    "Celeb-synthesis": 5582,
+    "Celeb-Real": 493
+  }
+}

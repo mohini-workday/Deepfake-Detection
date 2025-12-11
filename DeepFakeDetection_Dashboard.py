@@ -1,6 +1,6 @@
 # Streamlit Dashboard for DeepFake Detection Project
 # Comprehensive dashboard with video upload and model comparison
-# Author: Mohini
+# Author: Poonam and Mohini
 
 import streamlit as st
 import pandas as pd
@@ -1273,6 +1273,6 @@ st.sidebar.markdown("""
 
 Comprehensive analysis and video testing for deepfake detection models
 
-**Author**: Mohini  
+**Author**: Poonam andMohini  
 **Project**: ML PostGrad - Deep Learning Final Project
 """)
