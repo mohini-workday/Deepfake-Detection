@@ -46,11 +46,15 @@ Thumbs.db
 *.ckpt
 
 # Data files (if large)
-*.mp4
-*.avi
-*.mov
+# Ignore video files in Celeb-real and Celeb-synthesis (too large)
+data/Celeb-real/*.mp4
+data/Celeb-real/*.avi
+data/Celeb-real/*.mov
+data/Celeb-synthesis/*.mp4
+data/Celeb-synthesis/*.avi
+data/Celeb-synthesis/*.mov
+# Allow Testing folder videos (smaller size)
 *.zip
-data/
 
 # Logs
 *.log
