@@ -115,7 +115,7 @@ Final Project/
 
 ### 1. Data Loading & Exploration
 - Load dataset from local folders (Celeb-Real, Celeb-Synthesis, Testing)
-- Dataset source: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj
+- Download the files from the Celeb-real and Celeb-synthesis folders in Dataset source: https://drive.google.com/open?id=1iLx76wsbi9itnkxSqz9BVBl4ZvnbIazj  and place it in the local folders provided  - Celeb-Real, Celeb-Synthesis. Testing folder is already pushed with files to test the code.
 - Analyze dataset structure and class distribution
 - Visualize sample images/videos
 - Generate dataset statistics and label distribution analysis
